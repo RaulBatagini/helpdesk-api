@@ -169,3 +169,15 @@ Padrão de commits: `feat:`, `fix:`, `test:`, `docs:`, `refactor:`, `chore:`.
 | US005 | Consultar chamados | Média |
 | US006 | Alterar prioridade | Média |
 | US007 | Consultar histórico do chamado | Baixa |
+
+Plano dos 8 testes
+#	US	Cenário (a pergunta que o teste responde)	Entrada	Saída esperada	Técnica
+
+1	001	E-mail repetido com maiúsculas e espaços conta como duplicado?	já existe ana@email.com, tento " ANA@Email.com "	erro 409, nenhum save	verify sem expect de save
+2	002	O chamado é gravado na ordem certa e o histórico aponta para ele?	solicitante válido, prioridade null	busca usuário, salva chamado, salva histórico (ABERTO, mesmo chamado), prioridade MEDIA	createStrictMock + Capture
+3	003	Atribuir técnico altera mais de uma coisa?	chamado ABERTO + usuário TECNICO	técnico gravado, status EM_ATENDIMENTO, 1 histórico novo	Capture + allOf
+4	004	Só as transições permitidas funcionam?	as 16 combinações origem/destino	permitidas atualizam e gravam histórico; as outras dão erro 400 e não alteram nada	@DataProvider
+5	004	Transição inválida deixa lixo no banco?	ABERTO → FECHADO	erro 400, nenhum save de chamado nem de histórico	verify sem expect
+6	005	O filtro por status devolve só os chamados certos?	3 chamados (2 EM_ATENDIMENTO, 1 ABERTO), filtro EM_ATENDIMENTO	lista de 2, todos EM_ATENDIMENTO	hasSize + everyItem
+7	006	O histórico guarda prioridade antiga e nova? Trocar pela mesma grava algo?	MEDIA → ALTA, depois ALTA → ALTA	1º grava histórico com as duas; 2º não grava nada	Capture + verify
+8	007	“Chamado inexistente” e “sem histórico” são tratados diferente?	id 99 / chamado sem registros	404 / lista vazia sem erro	expectThrows + empty()
