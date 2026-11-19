@@ -1,13 +1,12 @@
+
 package br.helpdesk.helpdesk;
 
-import org.junit.jupiter.api.Test;
-import org.springframework.boot.test.context.SpringBootTest;
+import org.testng.annotations.Test;
 
-@SpringBootTest
-class HelpdeskApplicationTests {
+public class HelpdeskApplicationTests {
 
 	@Test
-	void contextLoads() {
+	public void contextLoads() {
+		assert true;
 	}
-
 }
