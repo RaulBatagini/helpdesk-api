@@ -12,6 +12,7 @@ import br.helpdesk.helpdesk.model.HistoricoChamado;
 import br.helpdesk.helpdesk.model.Usuario;
 import br.helpdesk.helpdesk.model.enums.Perfil;
 import br.helpdesk.helpdesk.model.enums.Prioridade;
+import br.helpdesk.helpdesk.model.enums.StatusChamado;
 import br.helpdesk.helpdesk.repository.ChamadoRepository;
 import br.helpdesk.helpdesk.repository.HistoricoChamadoRepository;
 import br.helpdesk.helpdesk.repository.UsuarioRepository;
@@ -108,6 +109,37 @@ public class ChamadoService {
         historicoRepository.save(historico);
 
         // 11. Retornar os dados do chamado
+        return ChamadoResponse.de(chamadoSalvo);
+    }
+
+    // Mudança de status e registro no histórico na mesma transação.
+    @Transactional
+    public ChamadoResponse atualizarStatus(Long id, StatusChamado novoStatus) {
+
+        if (novoStatus == null) {
+            throw new RegraNegocioException("O novo status é obrigatório");
+        }
+
+        Chamado chamado = chamadoRepository.findById(id)
+                .orElseThrow(() -> new RecursoNaoEncontradoException("Chamado não encontrado"));
+
+        StatusChamado statusAtual = chamado.getStatus();
+
+        if (statusAtual == StatusChamado.FECHADO) {
+            throw new RegraNegocioException("Chamado FECHADO não aceita alteração de status");
+        }
+
+        if (!statusAtual.podeIrPara(novoStatus)) {
+            throw new RegraNegocioException(
+                    "Transição de status inválida: " + statusAtual + " → " + novoStatus);
+        }
+
+        chamado.setStatus(novoStatus);
+        Chamado chamadoSalvo = chamadoRepository.save(chamado);
+
+        historicoRepository.save(new HistoricoChamado(chamadoSalvo,
+                "Status alterado de " + statusAtual + " para " + novoStatus));
+
         return ChamadoResponse.de(chamadoSalvo);
     }
 }
