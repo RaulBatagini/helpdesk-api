@@ -146,6 +146,37 @@ public class ChamadoService {
         return ChamadoResponse.de(chamadoSalvo);
     }
 
+    // Troca da prioridade e registro no histórico na mesma transação.
+    @Transactional
+    public ChamadoResponse alterarPrioridade(Long id, Prioridade novaPrioridade) {
+
+        if (novaPrioridade == null) {
+            throw new RegraNegocioException("A nova prioridade é obrigatória");
+        }
+
+        Chamado chamado = chamadoRepository.findById(id)
+                .orElseThrow(() -> new RecursoNaoEncontradoException("Chamado não encontrado"));
+
+        if (chamado.getStatus() == StatusChamado.FECHADO) {
+            throw new RegraNegocioException("Chamado FECHADO não aceita alteração de prioridade");
+        }
+
+        Prioridade prioridadeAtual = chamado.getPrioridade();
+
+        // Mesma prioridade: nada muda, então nada é gravado
+        if (prioridadeAtual == novaPrioridade) {
+            return ChamadoResponse.de(chamado);
+        }
+
+        chamado.setPrioridade(novaPrioridade);
+        Chamado chamadoSalvo = chamadoRepository.save(chamado);
+
+        historicoRepository.save(new HistoricoChamado(chamadoSalvo,
+                "Prioridade alterada de " + prioridadeAtual + " para " + novaPrioridade));
+
+        return ChamadoResponse.de(chamadoSalvo);
+    }
+
     // Eventos do chamado em ordem cronológica (mais antigo primeiro).
     @Transactional(readOnly = true)
     public List<HistoricoResponse> consultarHistorico(Long id) {
