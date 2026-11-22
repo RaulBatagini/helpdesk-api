@@ -246,4 +246,57 @@ public class ChamadoServiceTest extends EasyMockSupport {
         assertThat(eventos.get(1).dataHora(), notNullValue());
         verifyAll();
     }
+
+    // ---------- US005: consultar chamados ----------
+
+    @Test
+    public void deveListarApenasChamadosDoStatusFiltrado() {
+        // Só findByStatus é esperado: se o service chamar findAll, o mock estrito quebra o teste
+        expect(chamadoRepository.findByStatus(StatusChamado.EM_ATENDIMENTO)).andReturn(List.of(
+                chamadoEm(StatusChamado.EM_ATENDIMENTO),
+                chamadoEm(StatusChamado.EM_ATENDIMENTO)));
+        replayAll();
+
+        List<ChamadoResponse> resultado = chamadoService.listarChamados(StatusChamado.EM_ATENDIMENTO);
+
+        assertThat(resultado, hasSize(2));
+        assertThat(resultado.stream().map(ChamadoResponse::status).toList(),
+                is(List.of(StatusChamado.EM_ATENDIMENTO, StatusChamado.EM_ATENDIMENTO)));
+        verifyAll();
+    }
+
+    @Test
+    public void deveListarTodosOsChamadosQuandoNaoHaFiltro() {
+        expect(chamadoRepository.findAll()).andReturn(List.of(
+                chamadoEm(StatusChamado.ABERTO),
+                chamadoEm(StatusChamado.EM_ATENDIMENTO),
+                chamadoEm(StatusChamado.FECHADO)));
+        replayAll();
+
+        assertThat(chamadoService.listarChamados(null), hasSize(3));
+
+        verifyAll();
+    }
+
+    @Test
+    public void deveBuscarChamadoPorId() {
+        expect(chamadoRepository.findById(10L)).andReturn(Optional.of(chamadoEm(StatusChamado.RESOLVIDO)));
+        replayAll();
+
+        ChamadoResponse resposta = chamadoService.buscarChamado(10L);
+
+        assertThat(resposta.status(), is(StatusChamado.RESOLVIDO));
+        assertThat(resposta.titulo(), is("Sem acesso"));
+        verifyAll();
+    }
+
+    @Test
+    public void deveLancarNaoEncontradoAoBuscarIdInexistente() {
+        expect(chamadoRepository.findById(99L)).andReturn(Optional.empty());
+        replayAll();
+
+        expectThrows(RecursoNaoEncontradoException.class, () -> chamadoService.buscarChamado(99L));
+
+        verifyAll();
+    }
 }

@@ -5,6 +5,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.http.converter.HttpMessageNotReadableException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
+import org.springframework.web.method.annotation.MethodArgumentTypeMismatchException;
 
 @RestControllerAdvice
 public class GlobalExceptionHandler {
@@ -29,6 +30,12 @@ public class GlobalExceptionHandler {
     public ResponseEntity<ErroResposta> tratarCorpoInvalido(HttpMessageNotReadableException ex) {
         return resposta(HttpStatus.BAD_REQUEST,
                 "Corpo da requisição inválido. Verifique o JSON e os valores permitidos (ex.: perfil).");
+    }
+
+    // Valor inválido em parâmetro de URL (ex.: /chamados?status=XYZ)
+    @ExceptionHandler(MethodArgumentTypeMismatchException.class)
+    public ResponseEntity<ErroResposta> tratarParametroInvalido(MethodArgumentTypeMismatchException ex) {
+        return resposta(HttpStatus.BAD_REQUEST, "Valor inválido para o parâmetro '" + ex.getName() + "'");
     }
 
     private ResponseEntity<ErroResposta> resposta(HttpStatus status, String mensagem) {

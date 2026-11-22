@@ -158,4 +158,22 @@ public class ChamadoService {
                 .map(HistoricoResponse::de)
                 .toList();
     }
+
+    // Sem filtro lista todos; com filtro, só os chamados daquele status.
+    @Transactional(readOnly = true)
+    public List<ChamadoResponse> listarChamados(StatusChamado status) {
+
+        List<Chamado> chamados = status == null
+                ? chamadoRepository.findAll()
+                : chamadoRepository.findByStatus(status);
+
+        return chamados.stream().map(ChamadoResponse::de).toList();
+    }
+
+    @Transactional(readOnly = true)
+    public ChamadoResponse buscarChamado(Long id) {
+        return chamadoRepository.findById(id)
+                .map(ChamadoResponse::de)
+                .orElseThrow(() -> new RecursoNaoEncontradoException("Chamado não encontrado"));
+    }
 }
