@@ -5,6 +5,7 @@ import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.Matchers.*;
 import static org.testng.Assert.expectThrows;
 
+import java.util.List;
 import java.util.Optional;
 
 import org.easymock.Capture;
@@ -16,6 +17,7 @@ import org.testng.annotations.Test;
 
 import br.helpdesk.helpdesk.dto.ChamadoRequest;
 import br.helpdesk.helpdesk.dto.ChamadoResponse;
+import br.helpdesk.helpdesk.dto.HistoricoResponse;
 import br.helpdesk.helpdesk.exception.RecursoNaoEncontradoException;
 import br.helpdesk.helpdesk.exception.RegraNegocioException;
 import br.helpdesk.helpdesk.model.Chamado;
@@ -199,6 +201,49 @@ public class ChamadoServiceTest extends EasyMockSupport {
 
         expectThrows(RegraNegocioException.class, () -> chamadoService.atualizarStatus(10L, null));
 
+        verifyAll();
+    }
+
+    // ---------- US007: consultar histórico do chamado ----------
+
+    @Test
+    public void deveLancarNaoEncontradoAoConsultarHistoricoDeChamadoInexistente() {
+        expect(chamadoRepository.existsById(99L)).andReturn(false);
+        replayAll();
+
+        expectThrows(RecursoNaoEncontradoException.class, () -> chamadoService.consultarHistorico(99L));
+
+        // historicoRepository não tem expectativa: qualquer consulta a ele quebra o teste
+        verifyAll();
+    }
+
+    @Test
+    public void deveRetornarListaVaziaQuandoChamadoNaoTemHistorico() {
+        expect(chamadoRepository.existsById(10L)).andReturn(true);
+        expect(historicoRepository.findByChamadoIdOrderByDataHoraAsc(10L)).andReturn(List.of());
+        replayAll();
+
+        assertThat(chamadoService.consultarHistorico(10L), is(empty()));
+
+        verifyAll();
+    }
+
+    @Test
+    public void deveRetornarEventosNaOrdemCronologicaComDataEDescricao() {
+        Chamado chamado = chamadoEm(StatusChamado.EM_ATENDIMENTO);
+        // A consulta ordenada por data é a esperada pelo mock; o service não reordena
+        expect(chamadoRepository.existsById(10L)).andReturn(true);
+        expect(historicoRepository.findByChamadoIdOrderByDataHoraAsc(10L)).andReturn(List.of(
+                new HistoricoChamado(chamado, "Chamado aberto"),
+                new HistoricoChamado(chamado, "Status alterado de EM_ATENDIMENTO para RESOLVIDO")));
+        replayAll();
+
+        List<HistoricoResponse> eventos = chamadoService.consultarHistorico(10L);
+
+        assertThat(eventos.stream().map(HistoricoResponse::descricao).toList(),
+                is(List.of("Chamado aberto", "Status alterado de EM_ATENDIMENTO para RESOLVIDO")));
+        assertThat(eventos.get(0).dataHora(), notNullValue());
+        assertThat(eventos.get(1).dataHora(), notNullValue());
         verifyAll();
     }
 }
