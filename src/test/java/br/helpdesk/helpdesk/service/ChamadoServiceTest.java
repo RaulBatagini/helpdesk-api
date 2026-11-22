@@ -299,4 +299,95 @@ public class ChamadoServiceTest extends EasyMockSupport {
 
         verifyAll();
     }
+
+    // ---------- US003: atribuir técnico ao chamado ----------
+
+    @Test
+    public void deveAtribuirTecnicoMudarStatusEGravarHistorico() {
+        Chamado chamado = chamadoEm(StatusChamado.ABERTO);
+        Usuario tecnico = new Usuario("Maria Souza", "maria@email.com", Perfil.TECNICO);
+        Capture<Chamado> chamadoCaptor = newCapture();
+        Capture<HistoricoChamado> historicoCaptor = newCapture();
+
+        expect(chamadoRepository.findById(10L)).andReturn(Optional.of(chamado));
+        expect(usuarioRepository.findById(5L)).andReturn(Optional.of(tecnico));
+        expect(chamadoRepository.save(capture(chamadoCaptor))).andReturn(chamado);
+        expect(historicoRepository.save(capture(historicoCaptor))).andReturn(null);
+        replayAll();
+
+        ChamadoResponse resposta = chamadoService.atribuirTecnico(10L, 5L);
+
+        // Uma única atribuição altera técnico e status ao mesmo tempo
+        assertThat(chamadoCaptor.getValue(), allOf(
+                hasProperty("tecnico", is(tecnico)),
+                hasProperty("status", is(StatusChamado.EM_ATENDIMENTO))));
+        assertThat(resposta.status(), is(StatusChamado.EM_ATENDIMENTO));
+        assertThat(historicoCaptor.getValue().getDescricao(), containsString("Maria Souza"));
+        verifyAll();
+    }
+
+    @Test
+    public void deveRejeitarAtribuicaoParaUsuarioSolicitante() {
+        Usuario solicitante = new Usuario("João Silva", "joao@email.com", Perfil.SOLICITANTE);
+        expect(chamadoRepository.findById(10L)).andReturn(Optional.of(chamadoEm(StatusChamado.ABERTO)));
+        expect(usuarioRepository.findById(5L)).andReturn(Optional.of(solicitante));
+        replayAll();
+
+        RegraNegocioException erro = expectThrows(RegraNegocioException.class,
+                () -> chamadoService.atribuirTecnico(10L, 5L));
+
+        assertThat(erro.getMessage(), containsString("não é um técnico"));
+        verifyAll(); // nenhum save esperado
+    }
+
+    @DataProvider(name = "statusNaoAbertos")
+    public Object[][] statusNaoAbertos() {
+        return new Object[][] {
+                { StatusChamado.EM_ATENDIMENTO }, { StatusChamado.RESOLVIDO }, { StatusChamado.FECHADO } };
+    }
+
+    @Test(dataProvider = "statusNaoAbertos")
+    public void deveRejeitarAtribuicaoQuandoChamadoNaoEstaAberto(StatusChamado status) {
+        Chamado chamado = chamadoEm(status);
+        Usuario tecnico = new Usuario("Maria Souza", "maria@email.com", Perfil.TECNICO);
+        expect(chamadoRepository.findById(10L)).andReturn(Optional.of(chamado));
+        expect(usuarioRepository.findById(5L)).andReturn(Optional.of(tecnico));
+        replayAll();
+
+        expectThrows(RegraNegocioException.class, () -> chamadoService.atribuirTecnico(10L, 5L));
+
+        assertThat(chamado.getTecnico(), nullValue());
+        assertThat(chamado.getStatus(), is(status));
+        verifyAll(); // nenhum save esperado
+    }
+
+    @Test
+    public void deveLancarNaoEncontradoAoAtribuirEmChamadoInexistente() {
+        expect(chamadoRepository.findById(99L)).andReturn(Optional.empty());
+        replayAll();
+
+        expectThrows(RecursoNaoEncontradoException.class, () -> chamadoService.atribuirTecnico(99L, 5L));
+
+        verifyAll(); // usuarioRepository sem expectativa: o técnico nem é buscado
+    }
+
+    @Test
+    public void deveLancarNaoEncontradoQuandoTecnicoNaoExiste() {
+        expect(chamadoRepository.findById(10L)).andReturn(Optional.of(chamadoEm(StatusChamado.ABERTO)));
+        expect(usuarioRepository.findById(5L)).andReturn(Optional.empty());
+        replayAll();
+
+        expectThrows(RecursoNaoEncontradoException.class, () -> chamadoService.atribuirTecnico(10L, 5L));
+
+        verifyAll();
+    }
+
+    @Test
+    public void deveRejeitarAtribuicaoSemIdDoTecnico() {
+        replayAll();
+
+        expectThrows(RegraNegocioException.class, () -> chamadoService.atribuirTecnico(10L, null));
+
+        verifyAll(); // nenhum repositório é consultado
+    }
 }

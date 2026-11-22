@@ -176,4 +176,38 @@ public class ChamadoService {
                 .map(ChamadoResponse::de)
                 .orElseThrow(() -> new RecursoNaoEncontradoException("Chamado não encontrado"));
     }
+
+    // Vínculo do técnico, mudança de status e histórico na mesma transação.
+    @Transactional
+    public ChamadoResponse atribuirTecnico(Long chamadoId, Long tecnicoId) {
+
+        if (tecnicoId == null) {
+            throw new RegraNegocioException("O ID do técnico é obrigatório");
+        }
+
+        Chamado chamado = chamadoRepository.findById(chamadoId)
+                .orElseThrow(() -> new RecursoNaoEncontradoException("Chamado não encontrado"));
+
+        Usuario tecnico = usuarioRepository.findById(tecnicoId)
+                .orElseThrow(() -> new RecursoNaoEncontradoException("Técnico não encontrado"));
+
+        if (tecnico.getPerfil() != Perfil.TECNICO) {
+            throw new RegraNegocioException("O usuário informado não é um técnico");
+        }
+
+        // Cobre também o FECHADO: só ABERTO recebe atribuição
+        if (chamado.getStatus() != StatusChamado.ABERTO) {
+            throw new RegraNegocioException(
+                    "Só chamados ABERTO podem receber atribuição (status atual: " + chamado.getStatus() + ")");
+        }
+
+        chamado.setTecnico(tecnico);
+        chamado.setStatus(StatusChamado.EM_ATENDIMENTO);
+        Chamado chamadoSalvo = chamadoRepository.save(chamado);
+
+        historicoRepository.save(new HistoricoChamado(chamadoSalvo,
+                "Chamado atribuído ao técnico " + tecnico.getNome()));
+
+        return ChamadoResponse.de(chamadoSalvo);
+    }
 }

@@ -17,6 +17,7 @@ public record ChamadoResponse(
         Prioridade prioridade,
         StatusChamado status,
         Long solicitanteId,
+        Long tecnicoId,
         LocalDateTime dataAbertura
 ) {
 
@@ -30,6 +31,7 @@ public record ChamadoResponse(
                 chamado.getPrioridade(),
                 chamado.getStatus(),
                 chamado.getSolicitante().getId(),
+                chamado.getTecnico() == null ? null : chamado.getTecnico().getId(),
                 chamado.getDataAbertura()
         );
     }
