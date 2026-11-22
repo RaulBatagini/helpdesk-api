@@ -247,6 +247,95 @@ public class ChamadoServiceTest extends EasyMockSupport {
         verifyAll();
     }
 
+    // ---------- US006: alterar prioridade ----------
+
+    @Test
+    public void deveAlterarPrioridadeEGravarHistoricoComAntigaENova() {
+        Chamado chamado = chamadoEm(StatusChamado.ABERTO); // prioridade inicial: MEDIA
+        Capture<HistoricoChamado> historicoCaptor = newCapture();
+
+        expect(chamadoRepository.findById(10L)).andReturn(Optional.of(chamado));
+        expect(chamadoRepository.save(chamado)).andReturn(chamado);
+        expect(historicoRepository.save(capture(historicoCaptor))).andReturn(null);
+        replayAll();
+
+        ChamadoResponse resposta = chamadoService.alterarPrioridade(10L, Prioridade.ALTA);
+
+        assertThat(resposta.prioridade(), is(Prioridade.ALTA));
+        assertThat(historicoCaptor.getValue().getDescricao(),
+                is("Prioridade alterada de MEDIA para ALTA"));
+        verifyAll();
+    }
+
+    @Test
+    public void naoDeveGravarNadaQuandoPrioridadeNaoMuda() {
+        Chamado chamado = chamadoEm(StatusChamado.ABERTO);
+        chamado.setPrioridade(Prioridade.ALTA);
+
+        // Só findById é esperado: qualquer save quebra o teste
+        expect(chamadoRepository.findById(10L)).andReturn(Optional.of(chamado));
+        replayAll();
+
+        ChamadoResponse resposta = chamadoService.alterarPrioridade(10L, Prioridade.ALTA);
+
+        assertThat(resposta.prioridade(), is(Prioridade.ALTA));
+        verifyAll();
+    }
+
+    @DataProvider(name = "statusNaoFechados")
+    public Object[][] statusNaoFechados() {
+        return new Object[][] {
+                { StatusChamado.ABERTO }, { StatusChamado.EM_ATENDIMENTO }, { StatusChamado.RESOLVIDO } };
+    }
+
+    @Test(dataProvider = "statusNaoFechados")
+    public void devePermitirAlterarPrioridadeEmQualquerStatusExcetoFechado(StatusChamado status) {
+        Chamado chamado = chamadoEm(status);
+        expect(chamadoRepository.findById(10L)).andReturn(Optional.of(chamado));
+        expect(chamadoRepository.save(chamado)).andReturn(chamado);
+        expect(historicoRepository.save(anyObject(HistoricoChamado.class))).andReturn(null);
+        replayAll();
+
+        ChamadoResponse resposta = chamadoService.alterarPrioridade(10L, Prioridade.CRITICA);
+
+        assertThat(resposta.prioridade(), is(Prioridade.CRITICA));
+        verifyAll();
+    }
+
+    @Test
+    public void deveRejeitarAlteracaoDePrioridadeEmChamadoFechado() {
+        Chamado chamado = chamadoEm(StatusChamado.FECHADO);
+        expect(chamadoRepository.findById(10L)).andReturn(Optional.of(chamado));
+        replayAll();
+
+        RegraNegocioException erro = expectThrows(RegraNegocioException.class,
+                () -> chamadoService.alterarPrioridade(10L, Prioridade.ALTA));
+
+        assertThat(erro.getMessage(), containsString("FECHADO não aceita alteração de prioridade"));
+        assertThat(chamado.getPrioridade(), is(Prioridade.MEDIA));
+        verifyAll(); // nenhum save esperado
+    }
+
+    @Test
+    public void deveRejeitarPrioridadeNulaSemConsultarOBanco() {
+        replayAll();
+
+        expectThrows(RegraNegocioException.class, () -> chamadoService.alterarPrioridade(10L, null));
+
+        verifyAll();
+    }
+
+    @Test
+    public void deveLancarNaoEncontradoAoAlterarPrioridadeDeChamadoInexistente() {
+        expect(chamadoRepository.findById(99L)).andReturn(Optional.empty());
+        replayAll();
+
+        expectThrows(RecursoNaoEncontradoException.class,
+                () -> chamadoService.alterarPrioridade(99L, Prioridade.ALTA));
+
+        verifyAll();
+    }
+
     // ---------- US005: consultar chamados ----------
 
     @Test

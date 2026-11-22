@@ -15,6 +15,7 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
+import br.helpdesk.helpdesk.dto.AlterarPrioridadeRequest;
 import br.helpdesk.helpdesk.dto.AtribuirTecnicoRequest;
 import br.helpdesk.helpdesk.dto.AtualizarStatusRequest;
 import br.helpdesk.helpdesk.dto.ChamadoRequest;
@@ -68,6 +69,14 @@ public class ChamadoController {
             @RequestBody AtribuirTecnicoRequest request) {
 
         return ResponseEntity.ok(chamadoService.atribuirTecnico(id, request.tecnicoId()));
+    }
+
+    @PatchMapping("/{id}/prioridade")
+    public ResponseEntity<ChamadoResponse> alterarPrioridade(
+            @PathVariable Long id,
+            @RequestBody AlterarPrioridadeRequest request) {
+
+        return ResponseEntity.ok(chamadoService.alterarPrioridade(id, request.prioridade()));
     }
 
     @GetMapping("/{id}/historico")
