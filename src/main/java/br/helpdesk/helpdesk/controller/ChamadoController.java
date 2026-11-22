@@ -1,8 +1,11 @@
 
 package br.helpdesk.helpdesk.controller;
 
+import java.util.List;
+
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PatchMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -13,6 +16,7 @@ import org.springframework.web.bind.annotation.RestController;
 import br.helpdesk.helpdesk.dto.AtualizarStatusRequest;
 import br.helpdesk.helpdesk.dto.ChamadoRequest;
 import br.helpdesk.helpdesk.dto.ChamadoResponse;
+import br.helpdesk.helpdesk.dto.HistoricoResponse;
 import br.helpdesk.helpdesk.service.ChamadoService;
 
 @RestController
@@ -40,5 +44,10 @@ public class ChamadoController {
             @RequestBody AtualizarStatusRequest request) {
 
         return ResponseEntity.ok(chamadoService.atualizarStatus(id, request.status()));
+    }
+
+    @GetMapping("/{id}/historico")
+    public ResponseEntity<List<HistoricoResponse>> consultarHistorico(@PathVariable Long id) {
+        return ResponseEntity.ok(chamadoService.consultarHistorico(id));
     }
 }

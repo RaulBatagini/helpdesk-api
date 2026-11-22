@@ -1,11 +1,14 @@
 
 package br.helpdesk.helpdesk.service;
 
+import java.util.List;
+
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import br.helpdesk.helpdesk.dto.ChamadoRequest;
 import br.helpdesk.helpdesk.dto.ChamadoResponse;
+import br.helpdesk.helpdesk.dto.HistoricoResponse;
 import br.helpdesk.helpdesk.exception.RegraNegocioException;
 import br.helpdesk.helpdesk.model.Chamado;
 import br.helpdesk.helpdesk.model.HistoricoChamado;
@@ -141,5 +144,18 @@ public class ChamadoService {
                 "Status alterado de " + statusAtual + " para " + novoStatus));
 
         return ChamadoResponse.de(chamadoSalvo);
+    }
+
+    // Eventos do chamado em ordem cronológica (mais antigo primeiro).
+    @Transactional(readOnly = true)
+    public List<HistoricoResponse> consultarHistorico(Long id) {
+
+        if (!chamadoRepository.existsById(id)) {
+            throw new RecursoNaoEncontradoException("Chamado não encontrado");
+        }
+
+        return historicoRepository.findByChamadoIdOrderByDataHoraAsc(id).stream()
+                .map(HistoricoResponse::de)
+                .toList();
     }
 }
