@@ -11,12 +11,14 @@ import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 import br.helpdesk.helpdesk.dto.AtualizarStatusRequest;
 import br.helpdesk.helpdesk.dto.ChamadoRequest;
 import br.helpdesk.helpdesk.dto.ChamadoResponse;
 import br.helpdesk.helpdesk.dto.HistoricoResponse;
+import br.helpdesk.helpdesk.model.enums.StatusChamado;
 import br.helpdesk.helpdesk.service.ChamadoService;
 
 @RestController
@@ -44,6 +46,18 @@ public class ChamadoController {
             @RequestBody AtualizarStatusRequest request) {
 
         return ResponseEntity.ok(chamadoService.atualizarStatus(id, request.status()));
+    }
+
+    @GetMapping
+    public ResponseEntity<List<ChamadoResponse>> listarChamados(
+            @RequestParam(required = false) StatusChamado status) {
+
+        return ResponseEntity.ok(chamadoService.listarChamados(status));
+    }
+
+    @GetMapping("/{id}")
+    public ResponseEntity<ChamadoResponse> buscarChamado(@PathVariable Long id) {
+        return ResponseEntity.ok(chamadoService.buscarChamado(id));
     }
 
     @GetMapping("/{id}/historico")
