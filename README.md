@@ -171,7 +171,7 @@ Exemplo de corpo para `POST /usuarios`:
   "perfil": "SOLICITANTE"
 }
 ```
-Rodas testes
+Rodar testes
 ```json
 {
   .\mvnw.cmd test
