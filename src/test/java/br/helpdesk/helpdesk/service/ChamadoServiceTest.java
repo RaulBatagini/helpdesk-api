@@ -1,5 +1,6 @@
 package br.helpdesk.helpdesk.service;
 
+import org.easymock.IMocksControl;
 import static org.easymock.EasyMock.*;
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.Matchers.*;
@@ -40,10 +41,11 @@ public class ChamadoServiceTest extends EasyMockSupport {
 
     @BeforeMethod
     public void setUp() {
-        // USO EXPLICITO DO createStrictMock para forçar a ordem exata das chamadas
-        chamadoRepository = createStrictMock(ChamadoRepository.class);
-        historicoRepository = createStrictMock(HistoricoChamadoRepository.class);
-        usuarioRepository = createStrictMock(UsuarioRepository.class);
+        // Um único controle estrito para os 3 mocks a ordem passa a valer entre eles
+        IMocksControl control = createStrictControl();
+        chamadoRepository = control.createMock(ChamadoRepository.class);
+        historicoRepository = control.createMock(HistoricoChamadoRepository.class);
+        usuarioRepository = control.createMock(UsuarioRepository.class);
 
         chamadoService = new ChamadoService(chamadoRepository, historicoRepository, usuarioRepository);
     }
@@ -60,7 +62,7 @@ public class ChamadoServiceTest extends EasyMockSupport {
                 1L,
                 "Sem acesso à internet no setor",
                 "Falha na rede",
-                Categoria.HARDWARE,
+                Categoria.REDE,
                 null
 
         );
@@ -101,6 +103,29 @@ public class ChamadoServiceTest extends EasyMockSupport {
         assertThat(historicoCapturado.getDescricao(), is("Chamado aberto"));
 
         // Valida se todas as expectativas ocorreram na ordem exata definida acima
+        verifyAll();
+    }
+
+    @Test
+    public void deveLancarNaoEncontradoAoAbrirChamadoComSolicitanteInexistente() {
+        expect(usuarioRepository.findById(99L)).andReturn(Optional.empty());
+        replayAll();
+
+        expectThrows(RecursoNaoEncontradoException.class, () -> chamadoService.abrirChamado(
+                new ChamadoRequest(99L, "Sem acesso", "Falha na rede", Categoria.REDE, null)));
+
+        verifyAll(); // nenhum save esperado
+    }
+
+    @Test
+    public void deveRejeitarAberturaDeChamadoPorUsuarioTecnico() {
+        Usuario tecnico = new Usuario("Maria Souza", "maria@email.com", Perfil.TECNICO);
+        expect(usuarioRepository.findById(1L)).andReturn(Optional.of(tecnico));
+        replayAll();
+
+        expectThrows(RegraNegocioException.class, () -> chamadoService.abrirChamado(
+                new ChamadoRequest(1L, "Sem acesso", "Falha na rede", Categoria.REDE, null)));
+
         verifyAll();
     }
 
